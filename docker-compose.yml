@@ -1,0 +1,50 @@
+services:
+  api:
+    build: .
+    container_name: filter-platform-api
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      HF_HOME: /data/huggingface
+      TORCH_HOME: /data/torch
+      HF_HUB_DISABLE_XET: "1"
+    volumes:
+      - ./app:/app/app
+      - platform_data:/data
+
+  bot:
+    build: .
+    container_name: filter-platform-bot
+    restart: unless-stopped
+    env_file: .env
+    command: ["python", "-m", "app.bot"]
+    environment:
+      HF_HOME: /data/huggingface
+      TORCH_HOME: /data/torch
+      HF_HUB_DISABLE_XET: "1"
+    volumes:
+      - ./app:/app/app
+      - platform_data:/data
+    profiles: ["bot"]
+
+  redis:
+    image: redis:7-alpine
+    container_name: filter-platform-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_data:/data
+
+volumes:
+  platform_data:
+  redis_data:
